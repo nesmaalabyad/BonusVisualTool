@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Online Tutoring Scheduler — Live Visualizer</title>
+<title>Online Tutoring Scheduler — Live Visualizer (Dynamic Topics)</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
   :root {
@@ -26,6 +26,7 @@
     --topic-os: #10b981;
     --topic-networks: #f59e0b;
     --topic-algorithms: #ec4899;
+    --topic-blank: #475569;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; }
@@ -40,50 +41,32 @@
   }
   header h1 { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.05em; }
   .header-right { display: flex; align-items: center; gap: 12px; }
-  .pattern-select {
-    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
-    font-family: var(--mono); font-size: 11px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
-  }
-  .speed-select {
+  .pattern-select, .speed-select {
     background: var(--surface2); border: 1px solid var(--border); color: var(--text);
     font-family: var(--mono); font-size: 11px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
   }
 
   /* CONTROLS */
-  .controls {
-    display: flex; gap: 8px; align-items: center;
-    padding: 12px 24px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
+  .controls { display: flex; gap: 8px; align-items: center; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
   .btn {
-    font-family: var(--mono); font-size: 11px; padding: 7px 16px;
-    border: 1px solid var(--border); background: var(--surface2); color: var(--text);
-    border-radius: 4px; cursor: pointer; transition: all 0.15s;
-    letter-spacing: 0.05em;
+    font-family: var(--mono); font-size: 11px; padding: 7px 16px; border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+    border-radius: 4px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.05em;
   }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .btn:hover, .btn.primary { border-color: var(--accent); color: var(--accent); }
   .btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-  .step-counter {
-    font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: auto;
-  }
+  .step-counter { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: auto; }
   .progress-bar-wrap { flex: 1; max-width: 200px; height: 3px; background: var(--border); border-radius: 2px; }
   .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 
   /* LAYOUT */
-  .main { display: grid; grid-template-columns: 1fr 280px; grid-template-rows: auto auto; gap: 1px; background: var(--border); height: calc(100vh - 100px); }
+  .main { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: auto auto; gap: 1px; background: var(--border); height: calc(100vh - 100px); }
   .panel { background: var(--bg); overflow: hidden; }
 
   /* EVENT LOG */
   .log-panel { grid-row: 1 / 3; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
   .panel-title { font-family: var(--mono); font-size: 10px; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--border); letter-spacing: 0.08em; text-transform: uppercase; }
   .log-scroll { flex: 1; overflow-y: auto; padding: 8px 0; }
-  .log-entry {
-    padding: 8px 16px; font-size: 12px; border-left: 2px solid transparent;
-    transition: background 0.2s; cursor: pointer;
-    display: grid; grid-template-columns: 48px 1fr; gap: 8px; align-items: start;
-  }
+  .log-entry { padding: 8px 16px; font-size: 12px; border-left: 2px solid transparent; transition: background 0.2s; cursor: pointer; display: grid; grid-template-columns: 48px 1fr; gap: 8px; align-items: start; }
   .log-entry:hover { background: var(--surface); }
   .log-entry.current { background: var(--surface2); border-left-color: var(--accent); }
   .log-entry.assigned { border-left-color: var(--green); }
@@ -92,115 +75,53 @@
   .log-entry.t-release { border-left-color: var(--yellow); }
   .log-time { font-family: var(--mono); font-size: 10px; color: var(--muted); padding-top: 1px; }
   .log-body { line-height: 1.5; }
-  .log-body .rid { font-family: var(--mono); font-size: 10px; color: var(--muted); }
-  .log-body .action { font-size: 12px; }
-  .tag {
-    display: inline-block; font-family: var(--mono); font-size: 9px; padding: 1px 5px;
-    border-radius: 2px; margin-left: 4px; font-weight: 700; letter-spacing: 0.04em;
-  }
+  .tag { display: inline-block; font-family: var(--mono); font-size: 9px; padding: 1px 5px; border-radius: 2px; margin-left: 4px; font-weight: 700; letter-spacing: 0.04em; }
   .tag-assigned { background: rgba(16,185,129,0.15); color: var(--green); }
   .tag-unassigned { background: rgba(239,68,68,0.15); color: var(--red); }
   .tag-override { background: rgba(245,158,11,0.15); color: var(--orange); }
   .tag-gate { background: rgba(124,58,237,0.15); color: #a78bfa; }
-  .tag-release { background: rgba(251,191,36,0.1); color: var(--yellow); }
 
-  /* HEAP PANEL */
-  .heap-panel { border-bottom: 1px solid var(--border); overflow-y: auto; }
-  .heap-items { padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
-  .heap-item {
-    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-    background: var(--surface); border-radius: 4px; font-size: 11px;
-    border: 1px solid var(--border); transition: all 0.3s;
-    animation: slideIn 0.25s ease;
-  }
+  /* HEAP & SLOTS */
+  .heap-panel, .slots-panel { overflow-y: auto; }
+  .heap-panel { border-bottom: 1px solid var(--border); }
+  .heap-items, .slots-grid { padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .heap-item, .slot-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--surface); border-radius: 4px; font-size: 11px; border: 1px solid var(--border); transition: all 0.3s; }
   .heap-item.top { border-color: var(--accent); box-shadow: 0 0 12px rgba(0,212,255,0.15); }
-  .heap-item.processing { opacity: 0.4; transform: scale(0.97); }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-  .heap-score { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent); min-width: 28px; text-align: right; }
-  .heap-info { flex: 1; }
-  .heap-sid { font-family: var(--mono); font-size: 10px; color: var(--muted); }
-  .heap-topic { font-size: 11px; font-weight: 500; }
-  .urgency-pip { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-
-  /* SLOTS PANEL */
-  .slots-panel { overflow-y: auto; }
-  .slots-grid { padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
-  .slot-row {
-    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-    background: var(--surface); border-radius: 4px; font-size: 11px;
-    border: 1px solid var(--border); transition: all 0.4s;
-  }
   .slot-row.reserved { border-style: dashed; opacity: 0.55; }
   .slot-row.just-assigned { animation: flashGreen 0.6s ease; }
-  .slot-row.just-released { animation: flashYellow 0.6s ease; }
-  @keyframes flashGreen { 0%,100%{} 30%{background:rgba(16,185,129,0.25); border-color:var(--green);} }
-  @keyframes flashYellow { 0%,100%{} 30%{background:rgba(251,191,36,0.15); border-color:var(--yellow);} }
-  .slot-id { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 28px; }
-  .slot-topic { font-size: 10px; font-weight: 600; min-width: 72px; }
+  @keyframes flashGreen { 30%{background:rgba(16,185,129,0.25); border-color:var(--green);} }
+  .heap-score { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent); min-width: 28px; text-align: right; }
+  .heap-info { flex: 1; }
+  .heap-topic, .slot-topic { font-size: 11px; font-weight: 600; min-width: 75px;}
+  .slot-id { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 24px; }
   .slot-ta { font-size: 10px; color: var(--muted); flex: 1; }
-  .slot-bar-wrap { width: 48px; height: 6px; background: var(--border); border-radius: 3px; }
+  .slot-bar-wrap { width: 40px; height: 6px; background: var(--border); border-radius: 3px; }
   .slot-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
   .slot-num { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 24px; text-align: right; }
-  .slot-unavail { font-family: var(--mono); font-size: 9px; color: var(--red); }
   .reserved-badge { font-family: var(--mono); font-size: 8px; color: var(--yellow); border: 1px solid var(--yellow); padding: 0 3px; border-radius: 2px; }
+  .slot-unavail { font-family: var(--mono); font-size: 9px; color: var(--red); }
 
   /* STATS BAR */
-  .stats-bar {
-    display: flex; gap: 0; border-top: 1px solid var(--border);
-    background: var(--surface); padding: 0;
-    position: fixed; bottom: 0; left: 0; right: 0;
-  }
+  .stats-bar { display: flex; border-top: 1px solid var(--border); background: var(--surface); position: fixed; bottom: 0; left: 0; right: 0; }
   .stat { flex: 1; padding: 8px 16px; border-right: 1px solid var(--border); }
-  .stat:last-child { border-right: none; }
   .stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-  .stat-val { font-family: var(--mono); font-size: 18px; font-weight: 700; line-height: 1.2; }
-  .stat-val.green { color: var(--green); }
-  .stat-val.red { color: var(--red); }
-  .stat-val.orange { color: var(--orange); }
-  .stat-val.blue { color: var(--accent); }
-  .stat-val.purple { color: #a78bfa; }
+  .stat-val { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+  .green { color: var(--green); } .red { color: var(--red); } .orange { color: var(--orange); } .blue { color: var(--accent); } .purple { color: #a78bfa; }
 
-  /* TOPIC COLORS */
-  .topic-Graphs { color: var(--topic-graphs); }
-  .topic-DP { color: var(--topic-dp); }
-  .topic-OS { color: var(--topic-os); }
-  .topic-Networks { color: var(--topic-networks); }
-  .topic-Algorithms { color: var(--topic-algorithms); }
-  .bar-Graphs { background: var(--topic-graphs); }
-  .bar-DP { background: var(--topic-dp); }
-  .bar-OS { background: var(--topic-os); }
-  .bar-Networks { background: var(--topic-networks); }
-  .bar-Algorithms { background: var(--topic-algorithms); }
-  .pip-5 { background: #ef4444; }
-  .pip-4 { background: #f97316; }
-  .pip-3 { background: #eab308; }
-  .pip-2 { background: #22c55e; }
-  .pip-1 { background: #64748b; }
+  .topic-Graphs { color: var(--topic-graphs); } .topic-DP { color: var(--topic-dp); } .topic-OS { color: var(--topic-os); }
+  .topic-Networks { color: var(--topic-networks); } .topic-Algorithms { color: var(--topic-algorithms); } .topic-Blank { color: var(--topic-blank); font-style: italic;}
+  .pip-5 { background: #ef4444; width:6px;height:6px;border-radius:50%; } .pip-4 { background: #f97316; width:6px;height:6px;border-radius:50%; }
+  .pip-3 { background: #eab308; width:6px;height:6px;border-radius:50%; } .pip-2 { background: #22c55e; width:6px;height:6px;border-radius:50%; }
+  .pip-1 { background: #64748b; width:6px;height:6px;border-radius:50%; }
 
-  .day-banner {
-    padding: 6px 16px; font-family: var(--mono); font-size: 10px;
-    color: var(--yellow); background: rgba(251,191,36,0.05);
-    border-bottom: 1px solid rgba(251,191,36,0.15);
-    letter-spacing: 0.08em;
-  }
-  .release-banner {
-    padding: 6px 16px; font-family: var(--mono); font-size: 10px;
-    color: var(--yellow); background: rgba(251,191,36,0.1);
-    border-top: 1px dashed rgba(251,191,36,0.4);
-    border-bottom: 1px dashed rgba(251,191,36,0.4);
-    letter-spacing: 0.04em; animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .day-banner { padding: 6px 16px; font-family: var(--mono); font-size: 10px; color: var(--yellow); background: rgba(251,191,36,0.05); border-bottom: 1px solid rgba(251,191,36,0.15); letter-spacing: 0.08em; }
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>⬡ ONLINE TUTORING SCHEDULER — LIVE VISUALIZER</h1>
+  <h1>⬡ ONLINE SCHEDULER — DYNAMIC TOPIC VISUALIZER</h1>
   <div class="header-right">
     <select class="pattern-select" id="patternSel" onchange="loadPattern()">
       <option value="uniform">Uniform Pattern</option>
@@ -226,23 +147,9 @@
 </div>
 
 <div class="main">
-  <!-- Left: Event log -->
-  <div class="panel log-panel">
-    <div class="panel-title">▸ EVENT LOG</div>
-    <div class="log-scroll" id="logScroll"></div>
-  </div>
-
-  <!-- Right top: Heap -->
-  <div class="panel heap-panel">
-    <div class="panel-title">▸ MAX-HEAP  <span id="heapCount" style="color:var(--accent);float:right">0 items</span></div>
-    <div class="heap-items" id="heapItems"></div>
-  </div>
-
-  <!-- Right bottom: Slots -->
-  <div class="panel slots-panel">
-    <div class="panel-title">▸ SLOT STATUS  <span id="slotSummary" style="color:var(--muted);float:right;font-size:10px"></span></div>
-    <div class="slots-grid" id="slotsGrid"></div>
-  </div>
+  <div class="panel log-panel"><div class="panel-title">▸ EVENT LOG</div><div class="log-scroll" id="logScroll"></div></div>
+  <div class="panel heap-panel"><div class="panel-title">▸ MAX-HEAP <span id="heapCount" style="color:var(--accent);float:right">0 items</span></div><div class="heap-items" id="heapItems"></div></div>
+  <div class="panel slots-panel"><div class="panel-title">▸ SLOTS (DYNAMIC LOCKING) <span id="slotSummary" style="color:var(--muted);float:right;font-size:10px"></span></div><div class="slots-grid" id="slotsGrid"></div></div>
 </div>
 
 <div class="stats-bar">
@@ -255,39 +162,37 @@
 </div>
 
 <script>
-// ── REAL DATASETS (embedded from CSV output) ──────────────────────────────
+// Embedded requests for visualizer
 const DATASETS = {"uniform": [{"request_id": "R008", "student_id": "S027", "topic": "OS", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 9}, {"request_id": "R001", "student_id": "S029", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R003", "student_id": "S036", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R007", "student_id": "S023", "topic": "Networks", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R006", "student_id": "S037", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R009", "student_id": "S038", "topic": "Networks", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R004", "student_id": "S028", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R010", "student_id": "S039", "topic": "Graphs", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R005", "student_id": "S032", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 14}, {"request_id": "R002", "student_id": "S043", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 15}, {"request_id": "R011", "student_id": "S034", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 10}, {"request_id": "R013", "student_id": "S031", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 10}, {"request_id": "R018", "student_id": "S021", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 11}, {"request_id": "R012", "student_id": "S046", "topic": "Algorithms", "urgency": 1, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 12}, {"request_id": "R015", "student_id": "S006", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 13}, {"request_id": "R017", "student_id": "S004", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 14}, {"request_id": "R019", "student_id": "S018", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 14}, {"request_id": "R020", "student_id": "S017", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 14}, {"request_id": "R014", "student_id": "S049", "topic": "Graphs", "urgency": 1, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 15}, {"request_id": "R016", "student_id": "S042", "topic": "Algorithms", "urgency": 2, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 16}, {"request_id": "R023", "student_id": "S047", "topic": "Graphs", "urgency": 1, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 10}, {"request_id": "R024", "student_id": "S041", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 11}, {"request_id": "R026", "student_id": "S012", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 11}, {"request_id": "R021", "student_id": "S005", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R025", "student_id": "S015", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R030", "student_id": "S003", "topic": "OS", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R022", "student_id": "S008", "topic": "Algorithms", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 13}, {"request_id": "R029", "student_id": "S020", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 13}, {"request_id": "R028", "student_id": "S048", "topic": "Networks", "urgency": 1, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 15}, {"request_id": "R027", "student_id": "S022", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 16}, {"request_id": "R032", "student_id": "S025", "topic": "Networks", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 9}, {"request_id": "R034", "student_id": "S013", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 9}, {"request_id": "R038", "student_id": "S002", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 10}, {"request_id": "R033", "student_id": "S011", "topic": "Networks", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R039", "student_id": "S009", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R037", "student_id": "S040", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 13}, {"request_id": "R031", "student_id": "S024", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 14}, {"request_id": "R035", "student_id": "S033", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 14}, {"request_id": "R040", "student_id": "S007", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 14}, {"request_id": "R036", "student_id": "S019", "topic": "Graphs", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 15}, {"request_id": "R045", "student_id": "S044", "topic": "Graphs", "urgency": 2, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 11}, {"request_id": "R047", "student_id": "S026", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 11}, {"request_id": "R041", "student_id": "S016", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 12}, {"request_id": "R048", "student_id": "S010", "topic": "Algorithms", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 12}, {"request_id": "R046", "student_id": "S045", "topic": "Networks", "urgency": 2, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 13}, {"request_id": "R049", "student_id": "S014", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 13}, {"request_id": "R043", "student_id": "S035", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 15}, {"request_id": "R050", "student_id": "S050", "topic": "Algorithms", "urgency": 1, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 15}, {"request_id": "R042", "student_id": "S030", "topic": "Networks", "urgency": 3, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 16}, {"request_id": "R044", "student_id": "S001", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 16}], "bursty": [{"request_id": "R008", "student_id": "S027", "topic": "OS", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 9}, {"request_id": "R001", "student_id": "S029", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R003", "student_id": "S036", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R007", "student_id": "S023", "topic": "Networks", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R011", "student_id": "S034", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R013", "student_id": "S031", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R023", "student_id": "S047", "topic": "Graphs", "urgency": 1, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R018", "student_id": "S021", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 11}, {"request_id": "R024", "student_id": "S041", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 11}, {"request_id": "R026", "student_id": "S012", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 11}, {"request_id": "R006", "student_id": "S037", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R009", "student_id": "S038", "topic": "Networks", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R012", "student_id": "S046", "topic": "Algorithms", "urgency": 1, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R021", "student_id": "S005", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R025", "student_id": "S015", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R030", "student_id": "S003", "topic": "OS", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 12}, {"request_id": "R004", "student_id": "S028", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R010", "student_id": "S039", "topic": "Graphs", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R015", "student_id": "S006", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R022", "student_id": "S008", "topic": "Algorithms", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R029", "student_id": "S020", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 13}, {"request_id": "R005", "student_id": "S032", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 14}, {"request_id": "R017", "student_id": "S004", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 14}, {"request_id": "R019", "student_id": "S018", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 14}, {"request_id": "R020", "student_id": "S017", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 14}, {"request_id": "R002", "student_id": "S043", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 15}, {"request_id": "R014", "student_id": "S049", "topic": "Graphs", "urgency": 1, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 15}, {"request_id": "R028", "student_id": "S048", "topic": "Networks", "urgency": 1, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 15}, {"request_id": "R016", "student_id": "S042", "topic": "Algorithms", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 16}, {"request_id": "R027", "student_id": "S022", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 16}, {"request_id": "R032", "student_id": "S025", "topic": "Networks", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 9}, {"request_id": "R034", "student_id": "S013", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 9}, {"request_id": "R038", "student_id": "S002", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 10}, {"request_id": "R045", "student_id": "S044", "topic": "Graphs", "urgency": 2, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 11}, {"request_id": "R047", "student_id": "S026", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 11}, {"request_id": "R033", "student_id": "S011", "topic": "Networks", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R039", "student_id": "S009", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R041", "student_id": "S016", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R048", "student_id": "S010", "topic": "Algorithms", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 12}, {"request_id": "R037", "student_id": "S040", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 13}, {"request_id": "R046", "student_id": "S045", "topic": "Networks", "urgency": 2, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 13}, {"request_id": "R049", "student_id": "S014", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 13}, {"request_id": "R031", "student_id": "S024", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 14}, {"request_id": "R035", "student_id": "S033", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 14}, {"request_id": "R040", "student_id": "S007", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 14}, {"request_id": "R036", "student_id": "S019", "topic": "Graphs", "urgency": 4, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 15}, {"request_id": "R043", "student_id": "S035", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 15}, {"request_id": "R050", "student_id": "S050", "topic": "Algorithms", "urgency": 1, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 15}, {"request_id": "R042", "student_id": "S030", "topic": "Networks", "urgency": 3, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 16}, {"request_id": "R044", "student_id": "S001", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 16}], "late_heavy": [{"request_id": "R001", "student_id": "S029", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 10}, {"request_id": "R002", "student_id": "S043", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 1, "arrival_hour": 15}, {"request_id": "R003", "student_id": "S036", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 10}, {"request_id": "R004", "student_id": "S028", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 2, "arrival_hour": 13}, {"request_id": "R005", "student_id": "S032", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 3, "arrival_hour": 14}, {"request_id": "R008", "student_id": "S027", "topic": "OS", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 9}, {"request_id": "R007", "student_id": "S023", "topic": "Networks", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 10}, {"request_id": "R011", "student_id": "S034", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 10}, {"request_id": "R013", "student_id": "S031", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 10}, {"request_id": "R023", "student_id": "S047", "topic": "Graphs", "urgency": 1, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 10}, {"request_id": "R018", "student_id": "S021", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 11}, {"request_id": "R024", "student_id": "S041", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 11}, {"request_id": "R026", "student_id": "S012", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 11}, {"request_id": "R006", "student_id": "S037", "topic": "Graphs", "urgency": 3, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R009", "student_id": "S038", "topic": "Networks", "urgency": 2, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R012", "student_id": "S046", "topic": "Algorithms", "urgency": 1, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R021", "student_id": "S005", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R025", "student_id": "S015", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R030", "student_id": "S003", "topic": "OS", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 12}, {"request_id": "R010", "student_id": "S039", "topic": "Graphs", "urgency": 2, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 13}, {"request_id": "R015", "student_id": "S006", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 13}, {"request_id": "R022", "student_id": "S008", "topic": "Algorithms", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 13}, {"request_id": "R029", "student_id": "S020", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 13}, {"request_id": "R017", "student_id": "S004", "topic": "DP", "urgency": 5, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 14}, {"request_id": "R019", "student_id": "S018", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 14}, {"request_id": "R020", "student_id": "S017", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 14}, {"request_id": "R014", "student_id": "S049", "topic": "Graphs", "urgency": 1, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 15}, {"request_id": "R028", "student_id": "S048", "topic": "Networks", "urgency": 1, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 15}, {"request_id": "R016", "student_id": "S042", "topic": "Algorithms", "urgency": 2, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 16}, {"request_id": "R027", "student_id": "S022", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 4, "arrival_hour": 16}, {"request_id": "R032", "student_id": "S025", "topic": "Networks", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 9}, {"request_id": "R034", "student_id": "S013", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 9}, {"request_id": "R038", "student_id": "S002", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 10}, {"request_id": "R045", "student_id": "S044", "topic": "Graphs", "urgency": 2, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 11}, {"request_id": "R047", "student_id": "S026", "topic": "Algorithms", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 11}, {"request_id": "R033", "student_id": "S011", "topic": "Networks", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 12}, {"request_id": "R039", "student_id": "S009", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 12}, {"request_id": "R041", "student_id": "S016", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 12}, {"request_id": "R048", "student_id": "S010", "topic": "Algorithms", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 12}, {"request_id": "R037", "student_id": "S040", "topic": "OS", "urgency": 2, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 13}, {"request_id": "R046", "student_id": "S045", "topic": "Networks", "urgency": 2, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 13}, {"request_id": "R049", "student_id": "S014", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 13}, {"request_id": "R031", "student_id": "S024", "topic": "DP", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 14}, {"request_id": "R035", "student_id": "S033", "topic": "DP", "urgency": 3, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 14}, {"request_id": "R040", "student_id": "S007", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 14}, {"request_id": "R036", "student_id": "S019", "topic": "Graphs", "urgency": 4, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 15}, {"request_id": "R043", "student_id": "S035", "topic": "OS", "urgency": 3, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 15}, {"request_id": "R050", "student_id": "S050", "topic": "Algorithms", "urgency": 1, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 15}, {"request_id": "R042", "student_id": "S030", "topic": "Networks", "urgency": 3, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 16}, {"request_id": "R044", "student_id": "S001", "topic": "Graphs", "urgency": 5, "weeks_waited": 0, "arrival_day": 5, "arrival_hour": 16}]};
 
 const SLOT_DEFS = [
-  {id:"S01",topic:"Graphs",  ta:"TA_Amira",   avail:true,  reserved:false},
-  {id:"S02",topic:"Graphs",  ta:"TA_Bassem",  avail:true,  reserved:false},
-  {id:"S03",topic:"DP",      ta:"TA_Celine",  avail:true,  reserved:false},
-  {id:"S04",topic:"DP",      ta:"TA_Dawoud",  avail:false, reserved:false},
-  {id:"S05",topic:"OS",      ta:"TA_Eman",    avail:true,  reserved:false},
-  {id:"S06",topic:"OS",      ta:"TA_Farid",   avail:true,  reserved:false},
-  {id:"S07",topic:"Networks",ta:"TA_Ghada",   avail:true,  reserved:false},
-  {id:"S08",topic:"Algorithms",ta:"TA_Hassan",avail:false, reserved:false},
-  {id:"S09",topic:"Networks",ta:"TA_Ibrahim", avail:true,  reserved:true},
-  {id:"S10",topic:"Algorithms",ta:"TA_Jasmine",avail:true, reserved:true},
+  {id:"S01", ta:"TA_Universal_1",  avail:true,  reserved:false},
+  {id:"S02", ta:"TA_Universal_2",  avail:true,  reserved:false},
+  {id:"S03", ta:"TA_Universal_3",  avail:true,  reserved:false},
+  {id:"S04", ta:"TA_Universal_4",  avail:false, reserved:false},
+  {id:"S05", ta:"TA_Universal_5",  avail:true,  reserved:false},
+  {id:"S06", ta:"TA_Universal_6",  avail:true,  reserved:false},
+  {id:"S07", ta:"TA_Universal_7",  avail:true,  reserved:false},
+  {id:"S08", ta:"TA_Universal_8",  avail:false, reserved:false},
+  {id:"S09", ta:"TA_Universal_9",  avail:true,  reserved:true},
+  {id:"S10", ta:"TA_Universal_10", avail:true,  reserved:true},
 ];
 
-const W = 0.5, T_RELEASE = 4, CAPACITY = 4;
-const OFFLINE_SERVED = {uniform:31, bursty:31, late_heavy:31};
+const W = 0.5, T_RELEASE = 3, CAPACITY = 4;
+const OFFLINE_SERVED = {uniform:32, bursty:32, late_heavy:32}; // Updated targets based on new baseline
 const DAYS = ['—','Mon','Tue','Wed','Thu','Fri'];
 
 // ── STATE ─────────────────────────────────────────────────────────
-let steps = [];        // pre-computed simulation steps
+let steps = [];
 let stepIdx = 0;
 let playTimer = null;
 let currentPattern = 'late_heavy';
 
 // ── SIMULATION ENGINE ─────────────────────────────────────────────
-function computeScore(req) {
-  return req.urgency + (req.weeks_waited * W);
-}
+function computeScore(req) { return req.urgency + (req.weeks_waited * W); }
 
 function simulate(requests) {
-  const slots = SLOT_DEFS.map(d => ({...d, occupancy:0, capacity:CAPACITY}));
+  const slots = SLOT_DEFS.map(d => ({...d, occupancy:0, capacity:CAPACITY, locked_topic: null, locked_by: null}));
   const openSlots = () => slots.filter(s => !s.reserved);
   const reservedSlots = () => slots.filter(s => s.reserved);
 
@@ -315,12 +220,8 @@ function simulate(requests) {
     });
   }
 
-  function snapshotSlots() {
-    return slots.map(s => ({...s}));
-  }
-  function snapshotHeap() {
-    return heap.map(h => ({...h, score: computeScore(h)}));
-  }
+  function snapshotSlots() { return slots.map(s => ({...s})); }
+  function snapshotHeap() { return heap.map(h => ({...h, score: computeScore(h)})); }
 
   function processHeap() {
     const os = openSlots();
@@ -332,49 +233,38 @@ function simulate(requests) {
       if (aw >= 1 && waitingCount > 0) {
         gateFires++;
         allSteps.push({
-          type: 'gate',
-          req: {...req, score: computeScore(req)},
-          heap: snapshotHeap(),
-          slots: snapshotSlots(),
-          assigned: {...assigned},
-          unassigned: [...unassigned],
-          served: Object.keys(assigned).length,
-          gateTotal: gateFires,
-          overrideTotal: overrideFires,
+          type: 'gate', req: {...req, score: computeScore(req)}, heap: snapshotHeap(), slots: snapshotSlots(),
+          assigned: {...assigned}, unassigned: [...unassigned], served: Object.keys(assigned).length,
+          gateTotal: gateFires, overrideTotal: overrideFires,
           msg: `Fairness gate fired — ${req.student_id} has ${aw} assignment(s) but ${waitingCount} student(s) still waiting`,
         });
         break;
       }
 
       heap.shift();
-      if ((assignmentsThisWeek[req.student_id] || 0) === 0) {
-        waitingCount = Math.max(0, waitingCount - 1);
-      }
+      if ((assignmentsThisWeek[req.student_id] || 0) === 0) waitingCount = Math.max(0, waitingCount - 1);
 
-      // best-fit
+      // Best-fit: Dynamic topic matching
       const candidates = openSlots()
-        .filter(s => s.topic === req.topic && s.avail && s.occupancy < s.capacity)
+        .filter(s => (s.locked_topic === null || s.locked_topic === req.topic) && s.avail && s.occupancy < s.capacity)
         .sort((a,b) => b.occupancy - a.occupancy);
 
       let assignedFlag = false;
       if (candidates.length > 0) {
         const slot = candidates[0];
+        if (slot.locked_topic === null) {
+            slot.locked_topic = req.topic;
+            slot.locked_by = req.request_id;
+        }
         slot.occupancy++;
         assigned[req.request_id] = slot.id;
         assignmentsThisWeek[req.student_id] = (assignmentsThisWeek[req.student_id]||0)+1;
         assignedFlag = true;
         allSteps.push({
-          type: 'assigned',
-          req: {...req, score: computeScore(req)},
-          slotId: slot.id,
-          heap: snapshotHeap(),
-          slots: snapshotSlots(),
-          assigned: {...assigned},
-          unassigned: [...unassigned],
-          served: Object.keys(assigned).length,
-          gateTotal: gateFires,
-          overrideTotal: overrideFires,
-          msg: `${req.request_id} (${req.student_id}) assigned → ${slot.id} [${slot.topic}/${slot.ta}]  score=${computeScore(req).toFixed(1)}`,
+          type: 'assigned', req: {...req, score: computeScore(req)}, slotId: slot.id,
+          heap: snapshotHeap(), slots: snapshotSlots(), assigned: {...assigned}, unassigned: [...unassigned],
+          served: Object.keys(assigned).length, gateTotal: gateFires, overrideTotal: overrideFires,
+          msg: `${req.request_id} (${req.student_id}) assigned → ${slot.id} [${slot.locked_topic}] score=${computeScore(req).toFixed(1)}`,
         });
       }
 
@@ -383,46 +273,32 @@ function simulate(requests) {
         const rs = reservedSlots().find(s => s.avail);
         if (rs) {
           rs.reserved = false;
+          rs.locked_topic = req.topic;
+          rs.locked_by = req.request_id;
           rs.occupancy++;
           assigned[req.request_id] = rs.id;
           assignmentsThisWeek[req.student_id] = (assignmentsThisWeek[req.student_id]||0)+1;
-          overrideCount++;
-          overrideFires++;
-          assignedFlag = true;
+          overrideCount++; overrideFires++; assignedFlag = true;
           allSteps.push({
-            type: 'override',
-            req: {...req, score: computeScore(req)},
-            slotId: rs.id,
-            heap: snapshotHeap(),
-            slots: snapshotSlots(),
-            assigned: {...assigned},
-            unassigned: [...unassigned],
-            served: Object.keys(assigned).length,
-            gateTotal: gateFires,
-            overrideTotal: overrideFires,
-            msg: `⚡ EMERGENCY OVERRIDE — ${req.request_id} (urgency-5) pulled reserved slot ${rs.id} [${rs.topic}/${rs.ta}]`,
+            type: 'override', req: {...req, score: computeScore(req)}, slotId: rs.id,
+            heap: snapshotHeap(), slots: snapshotSlots(), assigned: {...assigned}, unassigned: [...unassigned],
+            served: Object.keys(assigned).length, gateTotal: gateFires, overrideTotal: overrideFires,
+            msg: `⚡ OVERRIDE — ${req.request_id} (U-5) pulled reserved slot ${rs.id} and locked as [${rs.locked_topic}]`,
           });
         }
       }
 
       if (!assignedFlag) {
-        const topicSlots = openSlots().filter(s => s.topic === req.topic);
+        const topicSlots = openSlots().filter(s => s.locked_topic === null || s.locked_topic === req.topic);
         let reason;
-        if (!topicSlots.length) reason = 'Topic not offered';
+        if (!topicSlots.length) reason = 'No open slots / Topic not offered';
         else if (!topicSlots.some(s=>s.avail)) reason = 'TA unavailable';
         else reason = 'Capacity full';
         unassigned.push({request_id: req.request_id, student_id: req.student_id, reason});
         allSteps.push({
-          type: 'unassigned',
-          req: {...req, score: computeScore(req)},
-          reason,
-          heap: snapshotHeap(),
-          slots: snapshotSlots(),
-          assigned: {...assigned},
-          unassigned: [...unassigned],
-          served: Object.keys(assigned).length,
-          gateTotal: gateFires,
-          overrideTotal: overrideFires,
+          type: 'unassigned', req: {...req, score: computeScore(req)}, reason,
+          heap: snapshotHeap(), slots: snapshotSlots(), assigned: {...assigned}, unassigned: [...unassigned],
+          served: Object.keys(assigned).length, gateTotal: gateFires, overrideTotal: overrideFires,
           msg: `✗ ${req.request_id} (${req.student_id}) unassigned — ${reason}`,
         });
       }
@@ -432,40 +308,29 @@ function simulate(requests) {
   for (const req of requests) {
     req.score = computeScore(req);
 
-    // Day banner
     if (req.arrival_day !== lastDay) {
       lastDay = req.arrival_day;
       allSteps.push({type:'day', day: req.arrival_day, heap: snapshotHeap(), slots: snapshotSlots(),
         assigned:{...assigned}, unassigned:[...unassigned], served: Object.keys(assigned).length,
-        gateTotal: gateFires, overrideTotal: overrideFires,
-        msg: `── Day ${req.arrival_day} (${DAYS[req.arrival_day]}) ──`});
+        gateTotal: gateFires, overrideTotal: overrideFires, msg: `── Day ${req.arrival_day} (${DAYS[req.arrival_day]}) ──`});
     }
 
-    // Arrival
     heapInsert({...req});
     if ((assignmentsThisWeek[req.student_id]||0) === 0) waitingCount++;
 
-    // T_release
     if (req.arrival_day >= T_RELEASE && !reservedReleased) {
       reservedReleased = true;
       slots.forEach(s => { if(s.reserved) s.reserved = false; });
       allSteps.push({type:'release', heap: snapshotHeap(), slots: snapshotSlots(),
         assigned:{...assigned}, unassigned:[...unassigned], served: Object.keys(assigned).length,
-        gateTotal: gateFires, overrideTotal: overrideFires,
-        msg: `🔓 T_release fired — S09 (Networks/TA_Ibrahim) + S10 (Algorithms/TA_Jasmine) released to OpenSlots`});
+        gateTotal: gateFires, overrideTotal: overrideFires, msg: `🔓 T_release fired (Day 3) — Reserved slots released to Open`});
     }
 
     allSteps.push({
-      type: 'arrival',
-      req: {...req},
-      heap: snapshotHeap(),
-      slots: snapshotSlots(),
-      assigned: {...assigned},
-      unassigned: [...unassigned],
-      served: Object.keys(assigned).length,
-      gateTotal: gateFires,
-      overrideTotal: overrideFires,
-      msg: `↓ Arrival: ${req.request_id} — ${req.student_id} | ${req.topic} | urgency=${req.urgency} | score=${req.score.toFixed(1)} | Day${req.arrival_day} ${req.arrival_hour}:00`,
+      type: 'arrival', req: {...req}, heap: snapshotHeap(), slots: snapshotSlots(),
+      assigned: {...assigned}, unassigned: [...unassigned], served: Object.keys(assigned).length,
+      gateTotal: gateFires, overrideTotal: overrideFires,
+      msg: `↓ Arrival: ${req.request_id} — ${req.student_id} | ${req.topic} | urgency=${req.urgency} | Day${req.arrival_day} ${req.arrival_hour}:00`,
     });
 
     processHeap();
@@ -479,16 +344,10 @@ function renderLog(steps, currentIdx) {
   const el = document.getElementById('logScroll');
   el.innerHTML = '';
   steps.forEach((step, i) => {
-    if (step.type === 'day') {
+    if (step.type === 'day' || step.type === 'release') {
       const banner = document.createElement('div');
-      banner.className = 'day-banner';
-      banner.textContent = step.msg;
-      el.appendChild(banner);
-      return;
-    }
-    if (step.type === 'release') {
-      const banner = document.createElement('div');
-      banner.className = 'release-banner';
+      banner.className = step.type === 'day' ? 'day-banner' : 'day-banner tag-release';
+      banner.style = step.type === 'release' ? "color:var(--yellow); border:1px dashed var(--yellow); padding:6px;" : "";
       banner.textContent = step.msg;
       el.appendChild(banner);
       return;
@@ -504,15 +363,9 @@ function renderLog(steps, currentIdx) {
     if (step.type === 'override') tag = `<span class="tag tag-override">OVERRIDE</span>`;
     if (step.type === 'gate') tag = `<span class="tag tag-gate">GATE FIRED</span>`;
 
-    div.innerHTML = `
-      <div class="log-time">${timeStr}</div>
-      <div class="log-body">
-        <span class="action">${step.msg}</span>${tag}
-      </div>`;
+    div.innerHTML = `<div class="log-time">${timeStr}</div><div class="log-body"><span class="action">${step.msg}</span>${tag}</div>`;
     el.appendChild(div);
   });
-
-  // scroll current into view
   const curr = el.querySelector('.current');
   if (curr) curr.scrollIntoView({block:'nearest', behavior:'smooth'});
 }
@@ -526,10 +379,10 @@ function renderHeap(heapItems) {
     div.className = `heap-item ${i===0?'top':''}`;
     div.innerHTML = `
       <div class="heap-score">${req.score.toFixed(1)}</div>
-      <div class="urgency-pip pip-${req.urgency}"></div>
+      <div class="pip-${req.urgency}"></div>
       <div class="heap-info">
         <div class="heap-topic topic-${req.topic}">${req.topic}</div>
-        <div class="heap-sid">${req.student_id} · U${req.urgency} · ${req.request_id}</div>
+        <div class="slot-id" style="margin-top:2px">${req.student_id} · U${req.urgency} · ${req.request_id}</div>
       </div>`;
     el.appendChild(div);
   });
@@ -550,18 +403,19 @@ function renderSlots(slotSnap, lastAssigned, justReleased) {
     const isReserved = slot.reserved;
     const justA = slot.id === lastAssigned;
     const justR = justReleased && justReleased.includes(slot.id);
-    div.className = `slot-row ${isReserved?'reserved':''} ${justA?'just-assigned':''} ${justR?'just-released':''}`;
+    div.className = `slot-row ${isReserved?'reserved':''} ${justA?'just-assigned':''}`;
 
     const fillPct = (slot.occupancy / slot.capacity) * 100;
-    const barColor = isReserved ? '#f59e0b' : `var(--topic-${slot.topic.replace(' ','')})`;
-    const topicClass = `topic-${slot.topic}`;
+    const displayTopic = slot.locked_topic ? slot.locked_topic : "BLANK";
+    const topicClass = slot.locked_topic ? `topic-${slot.locked_topic}` : `topic-Blank`;
+    const barColor = isReserved ? '#f59e0b' : (slot.locked_topic ? `var(--topic-${slot.locked_topic.replace(' ','')})` : '#475569');
 
     if (!isReserved) { openCap += slot.capacity; usedCap += slot.occupancy; }
 
     div.innerHTML = `
       <span class="slot-id">${slot.id}</span>
-      <span class="slot-topic ${topicClass}">${slot.topic}</span>
-      <span class="slot-ta">${slot.ta}</span>
+      <span class="slot-topic ${topicClass}">${displayTopic}</span>
+      <span class="slot-ta">${slot.ta.replace('TA_Universal_', 'TA_')}</span>
       ${!slot.avail ? '<span class="slot-unavail">UNAVAIL</span>' : ''}
       ${isReserved ? '<span class="reserved-badge">RSVD</span>' : ''}
       <div class="slot-bar-wrap"><div class="slot-bar" style="width:${fillPct}%;background:${barColor}"></div></div>
@@ -575,31 +429,23 @@ function renderStep(idx) {
   if (!steps.length) return;
   idx = Math.max(0, Math.min(steps.length-1, idx));
   stepIdx = idx;
-
   const step = steps[idx];
 
-  // log (rerender with current highlighted)
   renderLog(steps, idx);
-
-  // heap
   renderHeap(step.heap || []);
-
-  // slots
-  const lastAssigned = step.slotId || null;
   const justReleased = step.type === 'release' ? ['S09','S10'] : null;
-  renderSlots(step.slots, lastAssigned, justReleased);
+  renderSlots(step.slots, step.slotId || null, justReleased);
 
-  // stats
   document.getElementById('statServed').textContent = step.served || 0;
   document.getElementById('statUnassigned').textContent = step.unassigned ? step.unassigned.length : 0;
   document.getElementById('statHeap').textContent = step.heap ? step.heap.length : 0;
   document.getElementById('statOverride').textContent = step.overrideTotal || 0;
   document.getElementById('statGate').textContent = step.gateTotal || 0;
-  const offline = OFFLINE_SERVED[currentPattern] || 31;
+  
+  const offline = OFFLINE_SERVED[currentPattern] || 32;
   const cr = step.served > 0 ? (step.served / offline).toFixed(4) : '—';
   document.getElementById('statCR').textContent = cr;
 
-  // progress
   const pct = steps.length > 1 ? (idx / (steps.length-1)) * 100 : 0;
   document.getElementById('progressBar').style.width = pct + '%';
   document.getElementById('stepCounter').textContent = `Step ${idx+1} / ${steps.length}`;
@@ -608,8 +454,7 @@ function renderStep(idx) {
 // ── CONTROLS ──────────────────────────────────────────────────────
 function togglePlay() {
   if (playTimer) {
-    clearInterval(playTimer);
-    playTimer = null;
+    clearInterval(playTimer); playTimer = null;
     document.getElementById('btnPlay').textContent = '▶ PLAY';
     document.getElementById('btnPlay').classList.remove('active');
   } else {
@@ -617,41 +462,24 @@ function togglePlay() {
     document.getElementById('btnPlay').classList.add('active');
     const speed = parseInt(document.getElementById('speedSel').value);
     playTimer = setInterval(() => {
-      if (stepIdx >= steps.length - 1) {
-        clearInterval(playTimer); playTimer = null;
-        document.getElementById('btnPlay').textContent = '▶ PLAY';
-        document.getElementById('btnPlay').classList.remove('active');
-        return;
-      }
+      if (stepIdx >= steps.length - 1) { togglePlay(); return; }
       stepForward();
     }, speed);
   }
 }
-
-function stepForward() {
-  if (stepIdx < steps.length - 1) { stepIdx++; renderStep(stepIdx); }
-}
-function stepBack() {
-  if (stepIdx > 0) { stepIdx--; renderStep(stepIdx); }
-}
+function stepForward() { if (stepIdx < steps.length - 1) { stepIdx++; renderStep(stepIdx); } }
+function stepBack() { if (stepIdx > 0) { stepIdx--; renderStep(stepIdx); } }
 function reset() {
-  if (playTimer) { clearInterval(playTimer); playTimer = null; }
-  document.getElementById('btnPlay').textContent = '▶ PLAY';
-  document.getElementById('btnPlay').classList.remove('active');
-  stepIdx = 0;
-  renderStep(0);
+  if (playTimer) togglePlay();
+  stepIdx = 0; renderStep(0);
 }
 function loadPattern() {
-  if (playTimer) { clearInterval(playTimer); playTimer = null; }
-  document.getElementById('btnPlay').textContent = '▶ PLAY';
-  document.getElementById('btnPlay').classList.remove('active');
+  if (playTimer) togglePlay();
   currentPattern = document.getElementById('patternSel').value;
   steps = simulate(DATASETS[currentPattern].map(r=>({...r})));
-  stepIdx = 0;
-  renderStep(0);
+  stepIdx = 0; renderStep(0);
 }
 
-// ── INIT ──────────────────────────────────────────────────────────
 loadPattern();
 </script>
 </body>
